@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>__LABEL__</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>__PYTHON_BIN__</string>
+      <string>-m</string>
+      <string>smart_signal.scheduler</string>
+      <string>--no-align-to-interval</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>__PROJECT_ROOT__</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PYTHONPATH</key>
+      <string>__PROJECT_ROOT__/src</string>
+      <key>TMPDIR</key>
+      <string>__PROJECT_ROOT__/.tmp</string>
+      <key>PATH</key>
+      <string>__PROJECT_ROOT__/.venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>StandardOutPath</key>
+    <string>__PROJECT_ROOT__/logs/launchd.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__PROJECT_ROOT__/logs/launchd.stderr.log</string>
+  </dict>
+</plist>

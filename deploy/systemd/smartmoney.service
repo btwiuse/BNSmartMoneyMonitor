@@ -1,0 +1,18 @@
+[Unit]
+Description=SmartMoney collector and dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=CHANGE_ME
+WorkingDirectory=/opt/smartmoney
+Environment=PYTHONPATH=/opt/smartmoney/src
+Environment=TMPDIR=/opt/smartmoney/.tmp
+ExecStart=/opt/smartmoney/.venv/bin/python -m smart_signal.scheduler --no-align-to-interval
+Restart=always
+RestartSec=15
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

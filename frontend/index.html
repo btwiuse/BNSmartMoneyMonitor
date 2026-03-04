@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Smart Signal Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Binance Futures Smart Money</p>
+          <h1>聪明钱市场看板</h1>
+          <p class="hero-text">
+            查看最新全市场仓位、按币种回溯 trader / whale 多空变化，并直接核对入库结果。
+          </p>
+        </div>
+        <div class="hero-meta">
+          <div class="meta-card">
+            <span class="meta-label">最新时间桶</span>
+            <strong id="latest-ts">-</strong>
+          </div>
+          <div class="meta-card">
+            <span class="meta-label">覆盖交易对</span>
+            <strong id="symbol-count">-</strong>
+          </div>
+          <div class="meta-card">
+            <span class="meta-label">WS 价格时间</span>
+            <strong id="ws-price-as-of">-</strong>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard">
+        <section class="panel controls">
+          <div class="field">
+            <label for="symbol-input">Symbol</label>
+            <input id="symbol-input" type="text" placeholder="BTCUSDT" />
+          </div>
+          <div class="field">
+            <label for="sort-field">Sort By</label>
+            <select id="sort-field">
+              <option value="symbol">Symbol</option>
+              <option value="ws_last_price">WS Last Price</option>
+              <option value="trader_long_qty">Trader Long Qty</option>
+              <option value="trader_short_qty">Trader Short Qty</option>
+              <option value="whale_long_qty">Whale Long Qty</option>
+              <option value="whale_short_qty">Whale Short Qty</option>
+              <option value="market_long_short_ratio">Market Long/Short Ratio</option>
+              <option value="trader_long_qty_change_rate">Trader Long Change</option>
+              <option value="whale_long_qty_change_rate">Whale Long Change</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="sort-order">Sort Order</label>
+            <select id="sort-order">
+              <option value="asc">ASC</option>
+              <option value="desc" selected>DESC</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="min-position-input">Min Position Qty</label>
+            <input id="min-position-input" type="number" min="0" step="1000" placeholder="0" />
+          </div>
+          <div class="field">
+            <label for="limit-input">Limit</label>
+            <input id="limit-input" type="number" min="1" max="500" value="30" />
+          </div>
+          <div class="field inline-field">
+            <label class="checkbox-row">
+              <input id="auto-refresh-toggle" type="checkbox" checked />
+              <span>Auto Refresh</span>
+            </label>
+            <select id="refresh-interval">
+              <option value="15000">15s</option>
+              <option value="30000" selected>30s</option>
+              <option value="60000">60s</option>
+            </select>
+          </div>
+          <div class="button-row">
+            <button id="refresh-latest" class="primary">刷新最新快照</button>
+            <button id="load-history" class="secondary">查询历史</button>
+          </div>
+          <div class="field">
+            <label>WS 最新价</label>
+            <strong id="symbol-last-price">-</strong>
+          </div>
+        </section>
+
+        <section class="panel table-panel">
+          <div class="panel-header">
+            <h2>最新快照透视</h2>
+            <p>按 symbol 聚合 trader / whale 多空 qty、变化率与多空比。</p>
+          </div>
+          <div class="table-wrap">
+            <table id="latest-table">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel chart-panel">
+          <div class="panel-header">
+            <h2>Symbol Qty 时间序列</h2>
+            <p id="chart-title">点击表格行或输入 symbol 以加载 qty 曲线。</p>
+          </div>
+          <div class="chart-legend">
+            <span class="legend-item trader-long">Trader Long</span>
+            <span class="legend-item trader-short">Trader Short</span>
+            <span class="legend-item whale-long">Whale Long</span>
+            <span class="legend-item whale-short">Whale Short</span>
+          </div>
+          <div class="chart-frame">
+            <svg id="history-chart" viewBox="0 0 960 320" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+        </section>
+
+        <section class="panel history-panel wide-panel">
+          <div class="panel-header">
+            <h2>Symbol 历史</h2>
+            <p id="history-title">输入 symbol 后查看按时间桶聚合的 trader / whale 多空 qty、变化率与多空比。</p>
+          </div>
+          <div class="history-grid" id="history-grid"></div>
+        </section>
+      </main>
+    </div>
+
+    <template id="history-card-template">
+      <article class="history-card">
+        <div class="history-card-top">
+          <span class="timestamp"></span>
+          <span class="ratio-chip"></span>
+        </div>
+        <div class="history-card-body">
+          <div class="history-row">
+            <div class="metric">
+              <span>Trader Long</span>
+              <small>Qty</small>
+              <strong class="trader-long-position"></strong>
+            </div>
+            <div class="metric">
+              <span>Trader Short</span>
+              <small>Qty</small>
+              <strong class="trader-short-position"></strong>
+            </div>
+            <div class="metric">
+              <span>Trader L/S</span>
+              <strong class="trader-ratio"></strong>
+            </div>
+            <div class="metric">
+              <span>Trader Long d%</span>
+              <strong class="trader-change"></strong>
+            </div>
+          </div>
+          <div class="history-row">
+            <div class="metric">
+              <span>Whale Long</span>
+              <small>Qty</small>
+              <strong class="whale-long-position"></strong>
+            </div>
+            <div class="metric">
+              <span>Whale Short</span>
+              <small>Qty</small>
+              <strong class="whale-short-position"></strong>
+            </div>
+            <div class="metric">
+              <span>Whale L/S</span>
+              <strong class="whale-ratio"></strong>
+            </div>
+            <div class="metric">
+              <span>Whale Long d%</span>
+              <strong class="whale-change"></strong>
+            </div>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+  </html>
