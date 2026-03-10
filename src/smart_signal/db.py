@@ -25,6 +25,15 @@ CREATE TABLE IF NOT EXISTS smart_signal_snapshot (
     raw_json TEXT,
     PRIMARY KEY (ts_utc, symbol, cohort, side)
 );
+
+CREATE TABLE IF NOT EXISTS futures_price_snapshot (
+    ts_utc TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    last_price REAL,
+    event_time_ms INTEGER,
+    raw_json TEXT,
+    PRIMARY KEY (ts_utc, symbol)
+);
 """
 
 UPSERT_SQL = """
@@ -42,6 +51,20 @@ ON CONFLICT(ts_utc, symbol, cohort, side) DO UPDATE SET
     position_qty = excluded.position_qty,
     position_usdt = excluded.position_usdt,
     avg_entry_price = excluded.avg_entry_price,
+    raw_json = excluded.raw_json;
+"""
+
+PRICE_UPSERT_SQL = """
+INSERT INTO futures_price_snapshot (
+    ts_utc,
+    symbol,
+    last_price,
+    event_time_ms,
+    raw_json
+) VALUES (?, ?, ?, ?, ?)
+ON CONFLICT(ts_utc, symbol) DO UPDATE SET
+    last_price = excluded.last_price,
+    event_time_ms = excluded.event_time_ms,
     raw_json = excluded.raw_json;
 """
 
@@ -85,6 +108,34 @@ class SnapshotRecord:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+@dataclass(slots=True)
+class PriceSnapshotRecord:
+    ts_utc: str
+    symbol: str
+    last_price: float | None
+    event_time_ms: int | None
+    raw_json: str | None
+
+    @classmethod
+    def from_mapping(cls, payload: dict) -> "PriceSnapshotRecord":
+        return cls(
+            ts_utc=payload["ts_utc"],
+            symbol=payload["symbol"],
+            last_price=payload.get("last_price"),
+            event_time_ms=payload.get("event_time_ms"),
+            raw_json=payload.get("raw_json"),
+        )
+
+    def as_sql_params(self) -> tuple[str, str, float | None, int | None, str | None]:
+        return (
+            self.ts_utc,
+            self.symbol,
+            self.last_price,
+            self.event_time_ms,
+            self.raw_json,
+        )
 
 
 def floor_utc_to_5m(dt: datetime | None = None) -> str:
@@ -176,6 +227,39 @@ def fetch_distinct_symbols(db_path: str | Path = DEFAULT_DB_PATH) -> list[str]:
     with connect(db_path) as conn:
         rows = conn.execute("SELECT DISTINCT symbol FROM smart_signal_snapshot ORDER BY symbol").fetchall()
     return [str(row["symbol"]) for row in rows if row["symbol"]]
+
+
+def save_price_snapshot(
+    record: PriceSnapshotRecord | dict,
+    db_path: str | Path = DEFAULT_DB_PATH,
+) -> None:
+    save_price_snapshots([record], db_path=db_path)
+
+
+def save_price_snapshots(
+    records: Iterable[PriceSnapshotRecord | dict],
+    db_path: str | Path = DEFAULT_DB_PATH,
+) -> int:
+    prepared: list[PriceSnapshotRecord] = []
+    for record in records:
+        snapshot = record if isinstance(record, PriceSnapshotRecord) else PriceSnapshotRecord.from_mapping(record)
+        prepared.append(
+            PriceSnapshotRecord(
+                ts_utc=snapshot.ts_utc,
+                symbol=snapshot.symbol,
+                last_price=snapshot.last_price,
+                event_time_ms=snapshot.event_time_ms,
+                raw_json=coerce_raw_json(snapshot.raw_json),
+            )
+        )
+
+    if not prepared:
+        return 0
+
+    with connect(db_path) as conn:
+        conn.executescript(SCHEMA_SQL)
+        conn.executemany(PRICE_UPSERT_SQL, [record.as_sql_params() for record in prepared])
+    return len(prepared)
 
 
 def fetch_previous_ts(ts_utc: str, db_path: str | Path = DEFAULT_DB_PATH) -> str | None:

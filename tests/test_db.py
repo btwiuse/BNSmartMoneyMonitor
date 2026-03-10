@@ -4,7 +4,7 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-from smart_signal.db import fetch_distinct_symbols, floor_utc_to_5m, init_db, save_snapshot
+from smart_signal.db import fetch_distinct_symbols, floor_utc_to_5m, init_db, save_price_snapshot, save_snapshot
 
 
 def test_floor_utc_to_5m_rounds_down() -> None:
@@ -74,3 +74,30 @@ def test_fetch_distinct_symbols_returns_sorted_unique_values(tmp_path: Path) -> 
     )
 
     assert fetch_distinct_symbols(db_path) == ["BTCUSDT", "ETHUSDT"]
+
+
+def test_save_price_snapshot_upserts(tmp_path: Path) -> None:
+    db_path = tmp_path / "smart_signal.sqlite3"
+    init_db(db_path)
+
+    row = {
+        "ts_utc": "2026-03-04T12:00:00Z",
+        "symbol": "BTCUSDT",
+        "last_price": 68000.12,
+        "event_time_ms": 1710000000000,
+        "raw_json": {"last_price": 68000.12},
+    }
+    save_price_snapshot(row, db_path=db_path)
+
+    row["last_price"] = 69000.34
+    save_price_snapshot(row, db_path=db_path)
+
+    conn = sqlite3.connect(db_path)
+    try:
+        result = conn.execute(
+            "SELECT last_price, event_time_ms, raw_json FROM futures_price_snapshot"
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert result == (69000.34, 1710000000000, '{"last_price":68000.12}')

@@ -63,6 +63,24 @@ def save_price_snapshot(prices: dict[str, dict[str, Any]], snapshot_path: str | 
     return path
 
 
+def price_snapshot_rows(ts_utc: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
+    prices = payload.get("prices") or {}
+    rows: list[dict[str, Any]] = []
+    for symbol, row in prices.items():
+        if not isinstance(symbol, str) or not isinstance(row, dict):
+            continue
+        rows.append(
+            {
+                "ts_utc": ts_utc,
+                "symbol": symbol.upper(),
+                "last_price": normalize_number(row.get("last_price")),
+                "event_time_ms": row.get("event_time_ms"),
+                "raw_json": row,
+            }
+        )
+    return rows
+
+
 def _extract_ticker_rows(payload: Any) -> list[dict[str, Any]]:
     if isinstance(payload, list):
         return [item for item in payload if isinstance(item, dict)]

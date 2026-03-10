@@ -13,9 +13,10 @@ from typing import Any
 from playwright.async_api import BrowserContext, Error, Page, Playwright, TimeoutError, async_playwright
 
 from smart_signal.binance_symbols import DEFAULT_STAGE1_SYMBOLS, DEFAULT_SYMBOL_LIST_PATH, SymbolFetchError, SymbolUniverse, get_target_symbols
-from smart_signal.db import DEFAULT_DB_PATH, fetch_distinct_symbols, floor_utc_to_5m, init_db, save_snapshots
+from smart_signal.db import DEFAULT_DB_PATH, fetch_distinct_symbols, floor_utc_to_5m, init_db, save_price_snapshots, save_snapshots
 from smart_signal.logging_utils import DEFAULT_LOG_BACKUP_COUNT, DEFAULT_LOG_DIR, configure_logging, install_exception_logging
 from smart_signal.parser import ParsedSignal, parse_overview_payload
+from smart_signal.price_stream import DEFAULT_PRICE_SNAPSHOT_PATH, load_price_snapshot, price_snapshot_rows
 
 
 LOGGER = logging.getLogger(__name__)
@@ -204,6 +205,7 @@ async def run_collector_async(args: argparse.Namespace) -> int:
 
     init_db(args.db_path)
     ts_utc = floor_utc_to_5m()
+    _persist_price_snapshot(ts_utc, args.db_path, args.price_snapshot_path)
     allowlist = [symbol.strip().upper() for symbol in args.symbols.split(",")] if args.symbols else None
     try:
         universe = get_target_symbols(
@@ -295,6 +297,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Collect Binance Smart Signal data into SQLite.")
     parser.add_argument("--db-path", default=str(DEFAULT_DB_PATH), help="SQLite database path.")
     parser.add_argument("--profile-dir", default=str(DEFAULT_PROFILE_DIR), help="Persistent Playwright profile directory.")
+    parser.add_argument("--price-snapshot-path", default=str(DEFAULT_PRICE_SNAPSHOT_PATH), help="JSON file path for the latest websocket price snapshot.")
     parser.add_argument("--symbol-list-path", default=str(DEFAULT_SYMBOL_LIST_PATH), help="Static full-market symbol list file.")
     parser.add_argument("--symbols", default="", help="Comma-separated explicit symbol allowlist.")
     parser.add_argument(
@@ -322,6 +325,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--log-filename", default="collector.log", help="Collector log filename.")
     parser.add_argument("--log-backup-count", type=int, default=DEFAULT_LOG_BACKUP_COUNT, help="Number of rotated log files to keep.")
     return parser.parse_args()
+
+
+def _persist_price_snapshot(ts_utc: str, db_path: str, snapshot_path: str) -> None:
+    try:
+        payload = load_price_snapshot(snapshot_path)
+    except Exception:
+        LOGGER.exception("failed to load websocket price snapshot from %s", snapshot_path)
+        return
+
+    rows = price_snapshot_rows(ts_utc, payload)
+    if not rows:
+        LOGGER.warning("no websocket prices available to persist for ts_utc=%s from %s", ts_utc, snapshot_path)
+        return
+
+    count = save_price_snapshots(rows, db_path=db_path)
+    LOGGER.info("saved %s price snapshot rows for ts_utc=%s into %s", count, ts_utc, db_path)
 
 
 def main() -> None:

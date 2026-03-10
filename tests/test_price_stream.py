@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from smart_signal.price_stream import apply_ticker_updates, load_price_snapshot, save_price_snapshot
+from smart_signal.price_stream import apply_ticker_updates, load_price_snapshot, price_snapshot_rows, save_price_snapshot
 
 
 def test_apply_ticker_updates_accepts_all_market_ticker_array() -> None:
@@ -34,3 +34,32 @@ def test_save_and_load_price_snapshot_roundtrip(tmp_path: Path) -> None:
 
     assert payload["symbol_count"] == 1
     assert payload["prices"]["BTCUSDT"]["last_price"] == 68000.12
+
+
+def test_price_snapshot_rows_maps_prices_to_db_rows() -> None:
+    rows = price_snapshot_rows(
+        "2026-03-10T02:35:00Z",
+        {
+            "prices": {
+                "BTCUSDT": {"last_price": 68000.12, "event_time_ms": 1710000000000},
+                "ETHUSDT": {"last_price": 3500.5, "event_time_ms": 1710000001000},
+            }
+        },
+    )
+
+    assert rows == [
+        {
+            "ts_utc": "2026-03-10T02:35:00Z",
+            "symbol": "BTCUSDT",
+            "last_price": 68000.12,
+            "event_time_ms": 1710000000000,
+            "raw_json": {"last_price": 68000.12, "event_time_ms": 1710000000000},
+        },
+        {
+            "ts_utc": "2026-03-10T02:35:00Z",
+            "symbol": "ETHUSDT",
+            "last_price": 3500.5,
+            "event_time_ms": 1710000001000,
+            "raw_json": {"last_price": 3500.5, "event_time_ms": 1710000001000},
+        },
+    ]

@@ -161,3 +161,21 @@
 - Initialized a local Git repository for publication prep.
 - De-personalized service and environment documentation by removing workstation-specific usernames and absolute paths.
 - Converted the committed macOS `launchd` service definition into a reusable public template and ignored `.tmp/` runtime artifacts.
+
+## 2026-03-10 Step 26
+
+- Created dedicated research planning and progress documents for whale-position versus price analysis.
+- Separated research tracking from the main collector/dashboard engineering log.
+- Fixed the first research stage to `BTCUSDT` and explicit future-return horizons.
+
+## 2026-03-10 Step 27
+
+- Audited currently available research inputs in SQLite and the websocket price snapshot.
+- Confirmed Smart Money history is sufficient for factor construction, but local websocket price storage is only a latest snapshot and not a historical series.
+- Fixed the canonical research dataset shape and identified historical price backfill as the next blocker.
+
+## 2026-03-10 Step 28
+
+- Added SQLite persistence for websocket market prices using a new `futures_price_snapshot` table.
+- Wired `collector.py` to save the current websocket price snapshot into the database at each 5-minute bucket before Smart Money collection proceeds.
+- Added tests for price snapshot row mapping, price upsert behavior, and scheduler-to-collector argument propagation.

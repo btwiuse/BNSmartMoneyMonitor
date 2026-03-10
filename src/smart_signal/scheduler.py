@@ -44,6 +44,7 @@ def build_collector_args(args: argparse.Namespace) -> argparse.Namespace:
     return argparse.Namespace(
         db_path=args.db_path,
         profile_dir=args.profile_dir,
+        price_snapshot_path=args.price_snapshot_path,
         symbol_list_path=args.symbol_list_path,
         symbols=args.symbols,
         refresh_symbols=args.refresh_symbols,

@@ -15,6 +15,7 @@ def test_build_collector_args_maps_scheduler_flags() -> None:
     scheduler_args = Namespace(
         db_path="data/test.sqlite3",
         profile_dir="pw-profile",
+        price_snapshot_path="data/futures_price_snapshot.json",
         symbol_list_path="config/binance_usdt_perpetual_symbols.txt",
         symbols="BTCUSDT",
         refresh_symbols=False,
@@ -32,6 +33,7 @@ def test_build_collector_args_maps_scheduler_flags() -> None:
 
     assert collector_args.db_path == "data/test.sqlite3"
     assert collector_args.profile_dir == "pw-profile"
+    assert collector_args.price_snapshot_path == "data/futures_price_snapshot.json"
     assert collector_args.symbol_list_path == "config/binance_usdt_perpetual_symbols.txt"
     assert collector_args.symbols == "BTCUSDT"
     assert collector_args.refresh_symbols is False
