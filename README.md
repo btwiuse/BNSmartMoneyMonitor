@@ -34,7 +34,8 @@ Notes:
 ## Repository Layout
 
 ```text
-src/smart_signal/      application code
+src/smart_signal/      Python application code
+cli/                   Go CLI (query, serve, stream, symbols)
 frontend/              dashboard frontend
 tests/                 automated tests
 config/                static runtime configuration
@@ -137,6 +138,35 @@ PYTHONPATH=src python -m smart_signal.query snapshots --symbol BTCUSDT --limit 2
 - filtering and sorting
 - auto refresh
 
+## Go CLI
+
+A standalone Go CLI (`smart-signal`) is available for querying, serving, and streaming without Python.
+
+### Build
+
+```bash
+cd cli
+go build -o smart-signal .
+```
+
+### Quick Examples
+
+```bash
+# Query the latest snapshot
+smart-signal query latest --limit 20
+
+# Start the web dashboard
+smart-signal serve --port 8765
+
+# Run the price stream
+smart-signal stream
+
+# List all symbols
+smart-signal symbols
+```
+
+See `cli/README.md` for full documentation.
+
 ## Service Deployment
 
 Template files are included for:
@@ -179,6 +209,7 @@ Implemented and verified locally:
 - dashboard and JSON API
 - websocket market-price snapshot service
 - long-running scheduler
+- Go CLI for query, serve, stream, and symbol management (see `cli/README.md`)
 
 ## License
 
