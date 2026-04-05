@@ -505,6 +505,9 @@ func ptrOr(p *float64, def float64) float64 {
 }
 
 func maxOf(vals ...float64) float64 {
+	if len(vals) == 0 {
+		return 0
+	}
 	m := vals[0]
 	for _, v := range vals[1:] {
 		if v > m {
